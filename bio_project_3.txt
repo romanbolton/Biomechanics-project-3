@@ -1,0 +1,265 @@
+clear; close all; format compact
+addpath(genpath('=VU 3D model='));
+ 
+%% restore old matlab colormap and hold function
+addpath(genpath('fix hold'));% hold function is adapted (see hold function current folder) such that the color order index is not reset (new plot starts with blue again)
+set(groot,'defaultAxesColorOrder',[0 0 1;0 0.5 0;1 0 0;0 0.75 0.75;0.75 0 0.75;0.75 0.75 0;0.25 0.25 0.25])
+ 
+%% Default plot settings (you can chnge these)
+set(0,'defaultLineLineWidth',2);
+set(0,'defaultAxesLineWidth',2)
+set(0,'defaultAxesFontSize',12)
+ 
+%% Loading and plotting data
+load Project_data
+fs=150;
+ 
+traj.BerendBotje    = 1;
+plot_3d(traj,SO,[Fext Fext2]/2,[CoP CoP2],150,[],[],Fext,[],[],[]);
+vline([67 123 133],':k',{'foot initial contact','foot release','ball release'});
+ 
+ 
+%% Step 1: Kinematic analysis of the Drag-Flick 
+ 
+stick_end = traj.segment(13).joint(:,7:9);
+stick_start = traj.segment(13).joint(:,1:3);
+ 
+l5s1_joint = traj.segment(5).joint(:,4:6);
+R.shoulder_joint = traj.segment(9).joint(:,1:3);
+R.elbow_joint = traj.segment(9).joint(:,4:6);
+R.wrist_joint = traj.segment(10).joint(:,4:6);
+ 
+gRpe = traj.segment(5).R;
+gRth = traj.segment(7).R;
+gRarm = traj.segment(9).R;
+gRforearm = traj.segment(10).R;
+gRstk = traj.segment(13).R;
+ 
+%ball velocity
+distance = 1;
+frames = 4;
+freq = 140;
+sample_time = 1/freq;
+actual_time = frames*sample_time;
+ball_vel = distance/actual_time;
+ 
+%stick end velocity
+stick_end_vel = calc_derivative(stick_end,fs,[]);
+stick_end_peak_vel = max(stick_end_vel);
+ 
+%plot(stick_vel);
+figure (2)
+plot(stick_end_vel)
+title('Stick endpoint velocity')
+xlabel('sample nr.')
+ylabel('velocity (m/s)')
+ 
+%l5s1 angular velocity
+[p_OMEGAl5s1, d_OMEGAl5s1] = angular_vel_3d_joint(gRpe,gRth,fs);
+%shoulder angular velocity
+[p_OMEGAshoulder, d_OMEGAshoulder] = angular_vel_3d_joint(gRth,gRarm,fs);
+%elbow angular velocity
+[p_OMEGAelbow, d_OMEGAelbow] = angular_vel_3d_joint(gRarm,gRforearm,fs);
+%wrist angular velocity
+[p_OMEGAwrist, d_OMEGAwrist] = angular_vel_3d_joint(gRforearm,gRstk,fs);
+% Stick angular velocity
+% [p_OMEGAstick, d_OMEGAstick] = angular_vel_3d_joint(gRforearm,gRstk,fs);
+ 
+%convert radians to degrees l5s1
+p_OMEGAl5s1_degs = rad2deg(p_OMEGAl5s1);
+d_OMEGAl5s1_degs = rad2deg(p_OMEGAl5s1);
+ 
+%subplot(2,2,1); plot(p_OMEGAl5s1_degs);
+%hline([-350 350], 'k:', '--'); vline([67 133], 'k:', '--');
+ 
+figure (3);
+subplot(2,2,1)
+plot(p_OMEGAl5s1_degs)
+title('Angular velocity L5S1')
+xlabel('sample nr')
+ylabel('angular velocity (deg/s)')
+vline([67 133], 'k:', '--');
+hline([-350 350], 'k:');
+legend('x','y','z');
+ 
+%convert radians to degrees shoulder
+p_OMEGAshoulder_degs = rad2deg(p_OMEGAshoulder);
+d_OMEGAshoulder_degs = rad2deg(d_OMEGAshoulder);
+ 
+%subplot(2,2,2); plot(p_OMEGAshoulder_degs);
+%hline([-350 350], 'k:', '--'); vline([67 133], 'k:', '--');
+ 
+subplot(2,2,2)
+plot(p_OMEGAshoulder_degs)
+title('Angular velocity shoulder')
+xlabel('sample nr')
+ylabel('angular velocity (deg/s)')
+vline([67 133], 'k:');
+hline([-350 350], 'k:');
+legend('x','y','z');
+ 
+%convert radians to degrees elbow
+p_OMEGAelbow_degs = rad2deg(p_OMEGAelbow);
+d_OMEGAelbow_degs = rad2deg(p_OMEGAelbow);
+ 
+%subplot(2,2,3); plot(p_OMEGAelbow_degs);
+%hline([-350 350], 'k:', '--'); vline([67 133], 'k:', '--');
+ 
+subplot(2,2,3)
+plot(p_OMEGAelbow_degs)
+title('Angular velocity elbow')
+xlabel('sample nr')
+ylabel('angular velocity (deg/s)')
+vline([67 133], 'k:');
+hline([-350 350], 'k:');
+legend('x','y','z');
+ 
+%convert radians to degrees wrist
+p_OMEGAwrist_degs = rad2deg(p_OMEGAwrist);
+d_OMEGAwrist_degs = rad2deg(p_OMEGAwrist);
+ 
+%subplot(2,2,4); plot(p_OMEGAwrist_degs);
+%hline([-350 350], 'k:', '--'); vline([67 133], 'k:', '--');
+ 
+subplot(2,2,4)
+plot(p_OMEGAwrist_degs)
+title('Angular velocity wrist')
+xlabel('sample nr')
+ylabel('angular velocity (deg/s)')
+vline([67 133], 'k:');
+hline([-350 350], 'k:');
+legend('x','y','z');
+ 
+l5s1_z = p_OMEGAl5s1_degs(:,3);
+shoulder_y = p_OMEGAshoulder_degs(:,2);
+elbow_y = p_OMEGAelbow_degs(:,2);
+wrist_xy = p_OMEGAwrist_degs(:,1:2);
+ 
+figure (4);
+plot((1:length(l5s1_z)), l5s1_z, (1:length(shoulder_y)),shoulder_y,  (1:length(elbow_y)), elbow_y, (1:length(wrist_xy)), wrist_xy);
+title('Prominent velocity moments')
+xlabel('sample nr')
+ylabel('angular velocity (deg/s)')
+vline(125, 'k--', {'push off'});
+hline([-350 350], 'k:');
+legend('L5S1 Z', 'Shoulder Y', 'Elbow Y', 'Wrist X', 'Wrist Y')
+xlim([60 133])
+%% Step 2: Contribution to stick end-point velocity
+ 
+%defining length (r)
+Rl5s1_stk = stick_end - l5s1_joint;
+Rshoulder_stk = stick_end - R.shoulder_joint;
+Relbow_stk = stick_end - R.elbow_joint;
+Rwrist_stk = stick_end - R.wrist_joint;
+ 
+[gWpe, peWpg] = angular_vel_3d(gRpe,fs); 
+[gWth, thWthg] = angular_vel_3d(gRth,fs); 
+[gWarm, armWarmg] = angular_vel_3d(gRarm,fs); 
+[gWforearm, forearmWforearmg] = angular_vel_3d(gRforearm,fs); 
+[gWstick, stickWstickg] = angular_vel_3d(gRstk,fs); 
+ 
+gWl5s1 = gWth - gWpe; 
+gWshoulder = gWarm - gWth;
+gWelbow = gWforearm - gWarm;
+gWwrist = gWstick - gWforearm;
+ 
+%Define the Vstart
+L5S1 = traj.segment(5).joint(:,4:6);
+v_start = calc_derivative(L5S1,fs);
+ 
+%define Vend
+VL5S1 = cross(gWl5s1, Rl5s1_stk);
+Vshoulder =cross(gWshoulder,Rshoulder_stk);
+Velbow = cross(gWelbow,Relbow_stk);
+Vwrist = cross(gWwrist,Rwrist_stk);
+Vend= v_start + VL5S1 + Vshoulder  + Velbow + Vwrist;
+ 
+figure (5);
+subplot(2,2,1)
+plot((1:length(-Vend)),Vend,(1:length(stick_end_vel)), stick_end_vel);
+title('Stick endpoint velocity total');
+xlabel('sample nr.');
+ylabel('velocity (m/s)');
+legend('Vend X', 'Vend Y', 'Vend Z','V 1.1 X', 'V 1.1 Y', 'V 1.1 Z');
+ 
+ 
+subplot(2,2,2);
+plot((1:length(-Vend)),Vend(:,1),(1:length(stick_end_vel)),stick_end_vel(:,1));
+title('Stick endpoint velocity X-direction');
+xlabel('sample nr.');
+ylabel('velocity (m/s)');
+legend('Vend X', 'V 1.1 X');
+ 
+ 
+subplot(2,2,3);
+plot((1:length(-Vend)),Vend(:,2),(1:length(stick_end_vel)),stick_end_vel(:,2));
+title('Stick endpoint velocity Y-direction');
+xlabel('sample nr.');
+ylabel('velocity (m/s)');
+legend('Vend Y','V 1.1 Y');
+ 
+ 
+subplot(2,2,4);
+plot((1:length(-Vend)),Vend(:,3),(1:length(stick_end_vel)),stick_end_vel(:,3));
+title('Stick endpoint velocity Z-direction');
+xlabel('sample nr.');
+ylabel('velocity (m/s)');
+legend('Vend Z','V 1.1 Z');
+ 
+%plotting the x direction
+ 
+figure (6); 
+subplot(2,1,1);
+plot((1:length(p_OMEGAl5s1_degs)),-p_OMEGAl5s1_degs(:,1),(1:length(p_OMEGAshoulder_degs)),-p_OMEGAshoulder_degs(:,1),(1:length(p_OMEGAelbow_degs)),-p_OMEGAelbow_degs(:,1),(1:length(p_OMEGAwrist_degs)),-p_OMEGAwrist_degs(:,1));
+title('Stick endpoint angular velocity X-direction');
+xlabel('sample nr.');
+ylabel('omega (deg/s)');
+legend('pW5S1 X','pWshoulder X','pWelbow X','pWwrist X');
+hline([-350 350], 'k:');
+xlim([100 200]);
+ 
+subplot(2,1,2);
+plot((1:length(VL5S1)),-VL5S1(:,1),(1:length(Vshoulder)),-Vshoulder(:,1),(1:length(Velbow)),-Velbow(:,1),(1:length(Vwrist)),-Vwrist(:,1));
+title('Stick endpoint velocity X-direction');
+xlabel('sample nr.');
+ylabel('velocity (m/s)');
+legend('VL5S1 X','Vshoulder X','Velbow X','Vwrist X');
+hline(3.5, 'k:');
+xlim([100 200]);
+ 
+%contribution of each joint
+perct_l5s1_tot= ((VL5S1+v_start)./ Vend)*100;
+perct_shoulder_tot = (Vshoulder./ Vend)*100;
+perct_elbow_tot = (Velbow./ Vend)*100;
+perct_wrist_tot = (Vwrist./ Vend)*100;
+ 
+ 
+ball_release_l5s1=perct_l5s1_tot(133,1);
+ball_release_shoulder=perct_shoulder_tot(133,1);
+ball_release_elbow=perct_elbow_tot(133,1);
+ball_release_wrist=perct_wrist_tot(133,1);
+ 
+Total_ball_release=ball_release_l5s1+ball_release_shoulder+ball_release_elbow+ball_release_wrist;
+ 
+% figure
+% plot(1: length(perct_l5s1_tot), perct_l5s1_tot(:,1), 1: length(perct_shoulder_tot),perct_shoulder_tot(:,1),1: length(perct_elbow_tot), perct_elbow_tot(:,1),1: length(perct_wrist_tot), perct_wrist_tot(:,1));
+% legend('L5S1','shoulder', 'elbow','writs')
+ 
+ 
+%bar plot of contributions
+ 
+barvalues =[ball_release_l5s1,ball_release_shoulder,ball_release_elbow,ball_release_wrist,Total_ball_release ];
+errors    =[0 0 0 0 0] ;
+width     =[];
+groupnames={'Joints'};
+bw_title  ={'Joint contributions to ball release (X-direction)'};
+bw_xlabel =[];
+bw_ylabel ={'Percentage'};
+bw_legend={'L5S1','Shoulder','Elbow','Wrist','Total'};
+error_sides=2;
+gridstatus='y';
+legend_type ='axis';
+figure(7);
+barweb(barvalues, errors, width, groupnames, bw_title, bw_xlabel, bw_ylabel, [], gridstatus, bw_legend, error_sides, legend_type)
+ylim([-20 100])
+
